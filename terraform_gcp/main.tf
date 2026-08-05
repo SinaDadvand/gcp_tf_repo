@@ -1,4 +1,7 @@
 resource "google_compute_instance" "vm_instance" {
+  # Explicit dependency on the Compute API resource from api.tf
+  depends_on = [google_project_service.compute_api]
+
   name         = var.instance_name
   machine_type = "e2-micro"
   zone         = var.zone
