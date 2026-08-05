@@ -8,7 +8,7 @@
 *.tfstate.*
 
 # Secret / environment-specific variable files
-*.tfvars
+# *.tfvars
 *.tfvars.json
 
 # Override files
