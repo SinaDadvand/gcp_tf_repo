@@ -1,25 +1,66 @@
-name: "Terraform Central Deployment"
+name: "Terraform Multi-Project CI/CD"
 
 on:
   push:
     branches:
       - main
+      - 'feature/**'
+    paths:
+      - 'terraform_gcp/**'
   pull_request:
+    branches:
+      - main
+      - 'feature/**'
+    paths:
+      - 'terraform_gcp/**'
 
 permissions:
   id-token: write
   contents: read
+  pull-requests: write
 
 jobs:
   # -------------------------------------------------------------
-  # JOB 1: TERRAFORM PLAN (Runs automatically on PR and Push)
+  # JOB 1: DYNAMICALLY SCAN FILESYSTEM FOR TERRAFORM PROJECTS
+  # -------------------------------------------------------------
+  detect-projects:
+    name: "Detect Project Directories"
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Discover Terraform Directories
+        id: set-matrix
+        run: |
+          # Find all directories containing main.tf inside terraform_gcp/
+          DIRS=$(find terraform_gcp -type f -name "main.tf" -exec dirname {} \; | sort -u)
+          
+          # Convert newline-separated paths into a JSON array: ["./terraform_gcp/np/adt/p-np-adt-landing", ...]
+          JSON_ARRAY=$(echo "$DIRS" | jq -R . | jq -s -c .)
+          
+          echo "Discovered directories: $JSON_ARRAY"
+          echo "matrix=$JSON_ARRAY" >> $GITHUB_OUTPUT
+
+  # -------------------------------------------------------------
+  # JOB 2: TERRAFORM PLAN (Runs across dynamically discovered matrix)
   # -------------------------------------------------------------
   plan:
     name: "Terraform Plan"
+    needs: detect-projects
+    if: ${{ needs.detect-projects.outputs.matrix != '[]' && needs.detect-projects.outputs.matrix != '' }}
     runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        project_dir: ${{ toJson(fromJson(needs.detect-projects.outputs.matrix)) }}
+
     defaults:
       run:
-        working-directory: ./terraform_gcp
+        working-directory: ${{ matrix.project_dir }}
 
     steps:
       - name: Checkout Code
@@ -40,23 +81,38 @@ jobs:
         run: terraform init
 
       - name: Terraform Plan
-        run: terraform plan -no-color
+        id: plan
+        run: terraform plan -no-color -out=tfplan
+
+      - name: Post Plan to PR Comment
+        if: github.event_name == 'pull_request'
+        uses: borchero/terraform-plan-comment@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          planfile: tfplan
+          working-directory: ${{ matrix.project_dir }}
+          header: "📝 Terraform Plan Output (`${{ matrix.project_dir }}`)"
 
   # -------------------------------------------------------------
-  # JOB 2: TERRAFORM APPLY (Requires Manual Approval)
+  # JOB 3: TERRAFORM APPLY (Runs across dynamically discovered matrix)
   # -------------------------------------------------------------
   apply:
     name: "Terraform Apply"
-    needs: plan # Waits for the plan job to succeed first
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [detect-projects, plan]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    
-    # Linking to the environment triggers the manual gate rule
-    environment: production
+
+    strategy:
+      fail-fast: false
+      matrix:
+        project_dir: ${{ toJson(fromJson(needs.detect-projects.outputs.matrix)) }}
+
+    # Requires manual approval gate ONLY if applying changes under /pd/
+    environment: ${{ startsWith(matrix.project_dir, 'terraform_gcp/pd/') && 'production' || '' }}
 
     defaults:
       run:
-        working-directory: ./terraform_gcp
+        working-directory: ${{ matrix.project_dir }}
 
     steps:
       - name: Checkout Code
