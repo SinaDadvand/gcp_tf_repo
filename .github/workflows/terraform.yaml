@@ -56,7 +56,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project_dir: ${{ toJson(fromJson(needs.detect-projects.outputs.matrix)) }}
+        project_dir: ${{ fromJSON(needs.detect-projects.outputs.matrix) }}
 
     defaults:
       run:
@@ -105,7 +105,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project_dir: ${{ toJson(fromJson(needs.detect-projects.outputs.matrix)) }}
+        project_dir: ${{ fromJSON(needs.detect-projects.outputs.matrix) }}
 
     # Requires manual approval gate ONLY if applying changes under /pd/
     environment: ${{ startsWith(matrix.project_dir, 'terraform_gcp/pd/') && 'production' || '' }}
