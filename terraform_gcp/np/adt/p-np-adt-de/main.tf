@@ -2,7 +2,7 @@
 
 resource "google_compute_instance" "vm_instance" {
   depends_on   = [google_project_service.compute_api]
-  name         = "p-np-adt-de-vm"
+  name         = var.instance_name
   machine_type = "e2-micro"
   zone         = var.zone
 

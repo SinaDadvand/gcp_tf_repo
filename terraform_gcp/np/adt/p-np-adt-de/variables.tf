@@ -12,3 +12,9 @@ variable "zone" {
   type    = string
   default = "us-west1-a"
 }
+
+variable "instance_name" {
+  description = "Name for the Compute Engine instance"
+  type        = string
+  default     = "linux-practice-vm-de"
+}

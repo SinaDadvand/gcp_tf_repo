@@ -24,5 +24,5 @@ variable "terraform_state_bucket_name" {
 variable "instance_name" {
   description = "Name for the Compute Engine instance"
   type        = string
-  default     = "linux-practice-vm"
+  default     = "linux-practice-vm-landing"
 }
