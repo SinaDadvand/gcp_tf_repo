@@ -62,16 +62,16 @@ def main():
     console.clear()
     console.print(Panel.fit(
         "[bold cyan]GCP Project & Infrastructure Bootstrapper[/bold cyan]\n"
-        "[dim]Interactive onboarding CLI for non-prod and prod tiers[/dim]",
+        "[dim]Interactive onboarding CLI for core, non-prod, and prod tiers[/dim]",
         border_style="cyan"
     ))
 
-    # --- Step 1: Select Environment Tier ---
+    # --- Step 1: Select Target Domain / Environment Tier ---
     env_question = [
         inquirer.List(
             'env',
-            message="Select Environment Tier",
-            choices=['np (Non-Production)', 'pd (Production)'],
+            message="Select Target Domain / Environment Tier",
+            choices=['np (Non-Production)', 'pd (Production)', 'core (Platform Infrastructure)'],
         )
     ]
     env_answer = inquirer.prompt(env_question)
@@ -79,13 +79,15 @@ def main():
         console.print("[danger]Onboarding cancelled.[/danger]")
         sys.exit(1)
 
-    env = env_answer['env'].split()[0]  # 'np' or 'pd'
+    env = env_answer['env'].split()[0]  # 'np', 'pd', or 'core'
 
     # --- Step 2: Dynamic Sub-domain Selection ---
     if env == 'np':
         subdomain_choices = ['adt', 'spt']
-    else:  # 'pd'
+    elif env == 'pd':
         subdomain_choices = ['ppe', 'prd']
+    else:  # 'core'
+        subdomain_choices = ['iam', 'net']
 
     subdomain_question = [
         inquirer.List(
@@ -101,9 +103,9 @@ def main():
 
     subdomain = subdomain_answer['subdomain']
 
-    # --- Step 3: Enter Suffix ---
+    # --- Step 3: Enter Suffix with Hyphen Handling ---
     raw_suffix = Prompt.ask(
-        "\nEnter Project Suffix (e.g. [bold yellow]-landing[/bold yellow] or [bold yellow]-de[/bold yellow])"
+        "\nEnter Project Suffix (e.g. [bold yellow]-landing[/bold yellow], [bold yellow]-de[/bold yellow], or [bold yellow]-hub[/bold yellow])"
     ).strip()
 
     clean_suffix = raw_suffix.lstrip('-')
@@ -117,7 +119,7 @@ def main():
 
     billing_id = extract_billing_id(billing_input)
 
-    # Calculate absolute target directory inside REPO_ROOT/terraform_gcp
+    # Calculate target directory inside REPO_ROOT/terraform_gcp
     rel_target_dir = Path("terraform_gcp") / env / subdomain / project_id
     abs_target_dir = (REPO_ROOT / rel_target_dir).resolve()
 
