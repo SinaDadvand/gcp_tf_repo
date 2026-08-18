@@ -3,6 +3,7 @@ import os
 import sys
 import subprocess
 import time
+import json
 from pathlib import Path
 from rich.console import Console
 from rich.panel import Panel
@@ -58,6 +59,24 @@ def extract_billing_id(billing_input):
         return billing_input.split("(")[-1].replace(")", "").strip()
     return billing_input.strip()
 
+def get_existing_roles_for_sa(project_id, sa_email):
+    """Fetches assigned roles for a specific Service Account on a given project"""
+    cmd = f"gcloud projects get-iam-policy {project_id} --format=json"
+    success, stdout, _ = run_command(cmd)
+    if not success:
+        return set()
+    
+    assigned_roles = set()
+    try:
+        policy = json.loads(stdout)
+        member_target = f"serviceAccount:{sa_email}"
+        for binding in policy.get("bindings", []):
+            if member_target in binding.get("members", []):
+                assigned_roles.add(binding.get("role"))
+    except Exception:
+        pass
+    return assigned_roles
+
 def main():
     console.clear()
     console.print(Panel.fit(
@@ -103,7 +122,7 @@ def main():
 
     subdomain = subdomain_answer['subdomain']
 
-    # --- Step 3: Enter Suffix with Hyphen Handling ---
+    # --- Step 3: Enter Suffix ---
     raw_suffix = Prompt.ask(
         "\nEnter Project Suffix (e.g. [bold yellow]-landing[/bold yellow], [bold yellow]-de[/bold yellow], or [bold yellow]-hub[/bold yellow])"
     ).strip()
@@ -141,44 +160,52 @@ def main():
     # --- Step 5: Automated Bootstrap Pipeline ---
     console.print("\n[bold cyan]Starting Bootstrap Sequence...[/bold cyan]\n")
 
-    tasks = []
-    
     if project_exists:
-        console.print(f"[info]✓ Project '{project_id}' already exists in GCP. Skipping project creation.[/info]\n")
+        console.print(f"[info]✓ Project '{project_id}' already exists in GCP. Skipping creation.[/info]\n")
     else:
-        tasks.append(("Creating GCP Project...", f"gcloud projects create {project_id} --name='{project_id}'"))
+        success, _, stderr = run_command(f"gcloud projects create {project_id} --name='{project_id}'")
+        if success:
+            console.print(f"[success]✓ Created GCP Project '{project_id}'[/success]")
+        else:
+            console.print(f"[warning]! Project creation returned warning/error: {stderr.strip()}[/warning]")
 
     if billing_id:
-        tasks.append(("Linking Billing Account...", f"gcloud billing projects link {project_id} --billing-account={billing_id}"))
+        success, _, stderr = run_command(f"gcloud billing projects link {project_id} --billing-account={billing_id}")
+        if success:
+            console.print(f"[success]✓ Linked Billing Account ({billing_id}) to '{project_id}'[/success]")
 
-    tasks.extend([
-        ("Enabling Core APIs (Resource Manager, Service Usage, Compute)...", 
-         f"gcloud services enable cloudresourcemanager.googleapis.com serviceusage.googleapis.com compute.googleapis.com --project={project_id}"),
-        ("Granting IAM Editor to Central Runner Service Account...", 
-         f"gcloud projects add-iam-policy-binding {project_id} --member='serviceAccount:{CENTRAL_SA}' --role='roles/editor'"),
-        ("Granting Service Usage Admin to Central Runner...", 
-         f"gcloud projects add-iam-policy-binding {project_id} --member='serviceAccount:{CENTRAL_SA}' --role='roles/serviceusage.serviceUsageAdmin'"),
-    ])
+    # Enable APIs
+    console.print("\n[bold cyan]Enabling Core APIs...[/bold cyan]")
+    api_cmd = f"gcloud services enable cloudresourcemanager.googleapis.com serviceusage.googleapis.com iam.googleapis.com compute.googleapis.com --project={project_id}"
+    success, _, stderr = run_command(api_cmd)
+    if success:
+        console.print("[success]✓ Enabled Resource Manager, Service Usage, IAM, and Compute APIs[/success]")
+    else:
+        console.print(f"[warning]! API Enablement warning: {stderr.strip()}[/warning]")
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console
-    ) as progress:
-        
-        for desc, cmd in tasks:
-            task_id = progress.add_task(description=desc, total=None)
-            success, stdout, stderr = run_command(cmd)
-            
+    # --- Check & Assign Roles to Runner SA ---
+    console.print(f"\n[bold cyan]Evaluating Central Runner Roles for '{CENTRAL_SA}'...[/bold cyan]")
+    existing_roles = get_existing_roles_for_sa(project_id, CENTRAL_SA)
+
+    roles_to_grant = [
+        ("roles/editor", "Editor Access"),
+        ("roles/resourcemanager.projectIamAdmin", "Project IAM Admin Access"),
+        ("roles/serviceusage.serviceUsageAdmin", "Service Usage Admin Access")
+    ]
+
+    for role_id, role_name in roles_to_grant:
+        if role_id in existing_roles:
+            console.print(f"[info]  ├── [SKIP] Role '{role_id}' ({role_name}) is already assigned to {project_id}[/info]")
+        else:
+            cmd = f"gcloud projects add-iam-policy-binding {project_id} --member='serviceAccount:{CENTRAL_SA}' --role='{role_id}'"
+            success, _, stderr = run_command(cmd)
             if success:
-                progress.update(task_id, description=f"[success]✓ {desc}[/success]")
+                console.print(f"[success]  ├── [ADD] Granted '{role_id}' ({role_name}) on {project_id}[/success]")
             else:
-                err_msg = stderr.strip().split('\n')[-1] if stderr else "Command completed with warnings/non-zero exit."
-                progress.update(task_id, description=f"[warning]! {desc}\n  └── Reason: {err_msg}[/warning]")
-            
-            time.sleep(0.5)
+                err_msg = stderr.strip().split('\n')[-1] if stderr else "Failed binding role"
+                console.print(f"[warning]  ├── [WARN] Failed granting '{role_id}': {err_msg}[/warning]")
 
-    # --- Step 6: Generate Local Terraform Files ---
+    # --- Step 6: Generate Local Terraform Files (Without VM Instance) ---
     console.print("\n[bold cyan]Generating Local Terraform Files...[/bold cyan]")
     
     os.makedirs(abs_target_dir, exist_ok=True)
@@ -228,37 +255,24 @@ variable "zone" {{
         f.write(variables_content)
 
     # api.tf
-    api_content = f"""resource "google_project_service" "compute_api" {{
+    api_content = f"""resource "google_project_service" "iam_api" {{
   project            = var.project_id
-  service            = "compute.googleapis.com"
+  service            = "iam.googleapis.com"
+  disable_on_destroy = false
+}}
+
+resource "google_project_service" "resource_manager_api" {{
+  project            = var.project_id
+  service            = "cloudresourcemanager.googleapis.com"
   disable_on_destroy = false
 }}
 """
     with open(abs_target_dir / "api.tf", "w") as f:
         f.write(api_content)
 
-    # main.tf
+    # main.tf (No VM instance declaration)
     main_content = f"""# Primary resources for {project_id}
-
-resource "google_compute_instance" "vm_instance" {{
-  depends_on   = [google_project_service.compute_api]
-  name         = "{project_id}-vm"
-  machine_type = "e2-micro"
-  zone         = var.zone
-
-  boot_disk {{
-    initialize_params {{
-      image = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
-      size  = 20
-      type  = "pd-standard"
-    }}
-  }}
-
-  network_interface {{
-    network = "default"
-    access_config {{}}
-  }}
-}}
+# Workload resources, Service Accounts, and IAM bindings should be declared in dedicated .tf files.
 """
     with open(abs_target_dir / "main.tf", "w") as f:
         f.write(main_content)
