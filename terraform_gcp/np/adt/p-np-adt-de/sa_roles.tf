@@ -15,12 +15,6 @@ resource "google_project_iam_member" "soundboard_ar_reader_adt" {
   member     = "serviceAccount:${google_service_account.soundboard_runner_adt.email}"
 }
 
-resource "google_project_iam_member" "soundboard_group_reader_adt" {
-  depends_on = [google_project_service.cloudidentity_api_adt]
-  project    = var.project_id
-  role       = "roles/cloudidentity.groupsViewer"
-  member     = "serviceAccount:${google_service_account.soundboard_runner_adt.email}"
-}
 
 // ############################################################
 //    Granting Access to Discord Bot Secret for Cloud Run SA

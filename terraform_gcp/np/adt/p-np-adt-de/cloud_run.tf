@@ -1,5 +1,5 @@
 // ############################################################
-//    New Firebase Cloud Run v2 Service: soundboard-app-fb-adt
+//    Firebase Cloud Run v2 Service: soundboard-app-fb-adt
 // ############################################################
 
 resource "google_cloud_run_v2_service" "soundboard_app_fb_adt" {
@@ -37,9 +37,10 @@ resource "google_cloud_run_v2_service" "soundboard_app_fb_adt" {
         }
       }
 
+      // Configure explicit email allowlist
       env {
-        name  = "ALLOWED_USER_GROUP"
-        value = "soundboard-app-users-adt@yourdomain.com"
+        name  = "ALLOWED_USERS"
+        value = "sina.dadvand@gmail.com,friend@gmail.com"
       }
 
       resources {
@@ -60,12 +61,4 @@ resource "google_cloud_run_v2_service" "soundboard_app_fb_adt" {
       }
     }
   }
-}
-
-resource "google_cloud_run_v2_service_iam_member" "public_access_fb_adt" {
-  project  = var.project_id
-  location = var.region
-  name     = google_cloud_run_v2_service.soundboard_app_fb_adt.name
-  role     = "roles/run.invoker"
-  member   = "allUsers"
 }
