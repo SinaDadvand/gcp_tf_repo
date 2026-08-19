@@ -174,7 +174,7 @@ def main():
         if success:
             console.print(f"[success]✓ Linked Billing Account ({billing_id}) to '{project_id}'[/success]")
 
-    # Enable APIs
+    # Enable Core APIs required for bootstrap
     console.print("\n[bold cyan]Enabling Core APIs...[/bold cyan]")
     api_cmd = f"gcloud services enable cloudresourcemanager.googleapis.com serviceusage.googleapis.com iam.googleapis.com compute.googleapis.com --project={project_id}"
     success, _, stderr = run_command(api_cmd)
@@ -183,21 +183,25 @@ def main():
     else:
         console.print(f"[warning]! API Enablement warning: {stderr.strip()}[/warning]")
 
-    # --- Check & Assign Roles to Runner SA ---
+    # --- Check & Assign Admin Roles to Central Runner SA ---
     console.print(f"\n[bold cyan]Evaluating Central Runner Roles for '{CENTRAL_SA}'...[/bold cyan]")
     existing_roles = get_existing_roles_for_sa(project_id, CENTRAL_SA)
 
     roles_to_grant = [
         ("roles/editor", "Editor Access"),
         ("roles/resourcemanager.projectIamAdmin", "Project IAM Admin Access"),
-        ("roles/serviceusage.serviceUsageAdmin", "Service Usage Admin Access")
+        ("roles/serviceusage.serviceUsageAdmin", "Service Usage Admin Access"),
+        ("roles/secretmanager.admin", "Secret Manager Admin Access"),
+        ("roles/artifactregistry.admin", "Artifact Registry Admin Access"),
+        ("roles/run.admin", "Cloud Run Admin Access")
     ]
 
     for role_id, role_name in roles_to_grant:
         if role_id in existing_roles:
             console.print(f"[info]  ├── [SKIP] Role '{role_id}' ({role_name}) is already assigned to {project_id}[/info]")
         else:
-            cmd = f"gcloud projects add-iam-policy-binding {project_id} --member='serviceAccount:{CENTRAL_SA}' --role='{role_id}'"
+            # Added --condition=None to allow non-conditional bindings on conditional policies
+            cmd = f"gcloud projects add-iam-policy-binding {project_id} --member='serviceAccount:{CENTRAL_SA}' --role='{role_id}' --condition=None"
             success, _, stderr = run_command(cmd)
             if success:
                 console.print(f"[success]  ├── [ADD] Granted '{role_id}' ({role_name}) on {project_id}[/success]")
@@ -205,7 +209,7 @@ def main():
                 err_msg = stderr.strip().split('\n')[-1] if stderr else "Failed binding role"
                 console.print(f"[warning]  ├── [WARN] Failed granting '{role_id}': {err_msg}[/warning]")
 
-    # --- Step 6: Generate Local Terraform Files (Without VM Instance) ---
+    # --- Step 6: Generate Local Terraform Files ---
     console.print("\n[bold cyan]Generating Local Terraform Files...[/bold cyan]")
     
     os.makedirs(abs_target_dir, exist_ok=True)
@@ -270,7 +274,7 @@ resource "google_project_service" "resource_manager_api" {{
     with open(abs_target_dir / "api.tf", "w") as f:
         f.write(api_content)
 
-    # main.tf (No VM instance declaration)
+    # main.tf
     main_content = f"""# Primary resources for {project_id}
 # Workload resources, Service Accounts, and IAM bindings should be declared in dedicated .tf files.
 """
