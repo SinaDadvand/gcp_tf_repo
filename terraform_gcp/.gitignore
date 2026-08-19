@@ -20,3 +20,8 @@ override.tf.json
 # Crash logs
 crash.log
 crash.*.log
+
+# Keys
+*.anemona
+*.anemona-key
+*.config.json

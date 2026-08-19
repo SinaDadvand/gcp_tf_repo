@@ -35,12 +35,10 @@ jobs:
       - name: Discover Terraform Directories
         id: set-matrix
         run: |
-          # Find all directories containing main.tf inside terraform_gcp/
-          DIRS=$(find terraform_gcp -type f -name "main.tf" -exec dirname {} \; | sort -u)
+          # Find all directories containing provider.tf inside terraform_gcp/
+          DIRS=$(find terraform_gcp -type f -name "provider.tf" -exec dirname {} \; | sort -u)
           
-          # Convert newline-separated paths into a JSON array: ["./terraform_gcp/np/adt/p-np-adt-landing", ...]
           JSON_ARRAY=$(echo "$DIRS" | jq -R . | jq -s -c .)
-          
           echo "Discovered directories: $JSON_ARRAY"
           echo "matrix=$JSON_ARRAY" >> $GITHUB_OUTPUT
 
