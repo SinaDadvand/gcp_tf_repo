@@ -46,3 +46,21 @@ resource "google_service_account_iam_member" "wif_pusher_impersonation" {
   role               = "roles/iam.workloadIdentityUser"
   member             = "principalSet://iam.googleapis.com/projects/304516994920/locations/global/workloadIdentityPools/github-actions-pool/attribute.repository/SinaDadvand/soundboard_app"
 }
+
+// ############################################################
+//    Cloud Run Deployment Permissions for Pusher SA
+// ############################################################
+
+// 1. Grant Cloud Run Developer role (to manage services and revisions)
+resource "google_project_iam_member" "pusher_run_developer_adt" {
+  project = var.project_id
+  role    = "roles/run.developer"
+  member  = "serviceAccount:${google_service_account.github_ar_pusher_adt.email}"
+}
+
+// 2. Grant Service Account User role on the runner SA (allows pusher to deploy Cloud Run with runner SA attached)
+resource "google_service_account_iam_member" "pusher_act_as_runner_adt" {
+  service_account_id = google_service_account.soundboard_runner_adt.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.github_ar_pusher_adt.email}"
+}
