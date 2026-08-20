@@ -176,10 +176,10 @@ def main():
 
     # Enable Core APIs required for bootstrap
     console.print("\n[bold cyan]Enabling Core APIs...[/bold cyan]")
-    api_cmd = f"gcloud services enable cloudresourcemanager.googleapis.com serviceusage.googleapis.com iam.googleapis.com compute.googleapis.com --project={project_id}"
+    api_cmd = f"gcloud services enable cloudresourcemanager.googleapis.com serviceusage.googleapis.com iam.googleapis.com compute.googleapis.com secretmanager.googleapis.com artifactregistry.googleapis.com run.googleapis.com --project={project_id}"
     success, _, stderr = run_command(api_cmd)
     if success:
-        console.print("[success]✓ Enabled Resource Manager, Service Usage, IAM, and Compute APIs[/success]")
+        console.print("[success]✓ Enabled Resource Manager, Service Usage, IAM, Compute, Secret Manager, Artifact Registry, and Cloud Run APIs[/success]")
     else:
         console.print(f"[warning]! API Enablement warning: {stderr.strip()}[/warning]")
 
@@ -200,7 +200,6 @@ def main():
         if role_id in existing_roles:
             console.print(f"[info]  ├── [SKIP] Role '{role_id}' ({role_name}) is already assigned to {project_id}[/info]")
         else:
-            # Added --condition=None to allow non-conditional bindings on conditional policies
             cmd = f"gcloud projects add-iam-policy-binding {project_id} --member='serviceAccount:{CENTRAL_SA}' --role='{role_id}' --condition=None"
             success, _, stderr = run_command(cmd)
             if success:
@@ -236,8 +235,9 @@ provider "google" {{
   zone    = var.zone
 }}
 """
-    with open(abs_target_dir / "provider.tf", "w") as f:
-        f.write(provider_content)
+    if not (abs_target_dir / "provider.tf").exists():
+        with open(abs_target_dir / "provider.tf", "w") as f:
+            f.write(provider_content)
 
     # variables.tf
     variables_content = f"""variable "project_id" {{
@@ -255,8 +255,9 @@ variable "zone" {{
   default = "us-west1-a"
 }}
 """
-    with open(abs_target_dir / "variables.tf", "w") as f:
-        f.write(variables_content)
+    if not (abs_target_dir / "variables.tf").exists():
+        with open(abs_target_dir / "variables.tf", "w") as f:
+            f.write(variables_content)
 
     # api.tf
     api_content = f"""resource "google_project_service" "iam_api" {{
@@ -271,15 +272,17 @@ resource "google_project_service" "resource_manager_api" {{
   disable_on_destroy = false
 }}
 """
-    with open(abs_target_dir / "api.tf", "w") as f:
-        f.write(api_content)
+    if not (abs_target_dir / "api.tf").exists():
+        with open(abs_target_dir / "api.tf", "w") as f:
+            f.write(api_content)
 
     # main.tf
     main_content = f"""# Primary resources for {project_id}
 # Workload resources, Service Accounts, and IAM bindings should be declared in dedicated .tf files.
 """
-    with open(abs_target_dir / "main.tf", "w") as f:
-        f.write(main_content)
+    if not (abs_target_dir / "main.tf").exists():
+        with open(abs_target_dir / "main.tf", "w") as f:
+            f.write(main_content)
 
     console.print(Panel.fit(
         f"[bold green]Project Bootstrap Complete![/bold green]\n\n"

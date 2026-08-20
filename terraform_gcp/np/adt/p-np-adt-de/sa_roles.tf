@@ -28,13 +28,21 @@ resource "google_secret_manager_secret_iam_member" "soundboard_discord_secret_ac
 }
 
 // ############################################################
-//    Granting Writer Rights on Artifact Registry to Pusher SA
+//    IAM Permissions for WIF Image Pusher Service Account
 // ############################################################
 
-resource "google_artifact_registry_repository_iam_member" "pusher_access_adt" {
+// 1. Artifact Registry Writer (Allows pushing docker images)
+resource "google_artifact_registry_repository_iam_member" "pusher_ar_writer_adt" {
   project    = var.project_id
   location   = var.region
   repository = google_artifact_registry_repository.soundboard_repo_adt.name
   role       = "roles/artifactregistry.writer"
   member     = "serviceAccount:${google_service_account.github_ar_pusher_adt.email}"
+}
+
+// 2. Allow GitHub WIF Principal to impersonate this Service Account
+resource "google_service_account_iam_member" "wif_pusher_impersonation" {
+  service_account_id = google_service_account.github_ar_pusher_adt.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/projects/304516994920/locations/global/workloadIdentityPools/github-actions-pool/attribute.repository/YOUR_GITHUB_USERNAME/soundboard_app"
 }
