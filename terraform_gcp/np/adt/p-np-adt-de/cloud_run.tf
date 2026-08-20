@@ -62,3 +62,12 @@ resource "google_cloud_run_v2_service" "soundboard_app_fb_adt" {
     }
   }
 }
+
+# Allow public browser access so users can load the login page
+resource "google_cloud_run_service_iam_member" "public_access" {
+  location = google_cloud_run_v2_service.soundboard_app_fb_adt.location
+  project  = google_cloud_run_v2_service.soundboard_app_fb_adt.project
+  service  = google_cloud_run_v2_service.soundboard_app_fb_adt.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
