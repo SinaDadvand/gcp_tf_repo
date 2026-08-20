@@ -44,5 +44,5 @@ resource "google_artifact_registry_repository_iam_member" "pusher_ar_writer_adt"
 resource "google_service_account_iam_member" "wif_pusher_impersonation" {
   service_account_id = google_service_account.github_ar_pusher_adt.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/projects/304516994920/locations/global/workloadIdentityPools/github-actions-pool/attribute.repository/YOUR_GITHUB_USERNAME/soundboard_app"
+  member             = "principalSet://iam.googleapis.com/projects/304516994920/locations/global/workloadIdentityPools/github-actions-pool/attribute.repository/SinaDadvand/soundboard_app"
 }
