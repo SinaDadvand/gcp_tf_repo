@@ -36,6 +36,16 @@ resource "google_cloud_run_v2_service" "soundboard_app_fb_adt" {
           }
         }
       }
+      
+      env {
+        name = "FIREBASE_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.firebase_api_key_adt.secret_id
+            version = "latest"
+          }
+        }
+      }  
 
       // Configure explicit email allowlist
       env {
