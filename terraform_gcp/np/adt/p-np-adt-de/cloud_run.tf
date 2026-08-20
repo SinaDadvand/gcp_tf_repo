@@ -36,7 +36,7 @@ resource "google_cloud_run_v2_service" "soundboard_app_fb_adt" {
           }
         }
       }
-      
+
       env {
         name = "FIREBASE_API_KEY"
         value_source {
@@ -46,6 +46,11 @@ resource "google_cloud_run_v2_service" "soundboard_app_fb_adt" {
           }
         }
       }  
+      
+      env {
+        name  = "FIREBASE_AUTH_DOMAIN"
+        value = "${var.project_id}.firebaseapp.com" # Evaluates to p-np-adt-de.firebaseapp.com
+      }
 
       // Configure explicit email allowlist
       env {
