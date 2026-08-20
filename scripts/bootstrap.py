@@ -193,7 +193,8 @@ def main():
         ("roles/serviceusage.serviceUsageAdmin", "Service Usage Admin Access"),
         ("roles/secretmanager.admin", "Secret Manager Admin Access"),
         ("roles/artifactregistry.admin", "Artifact Registry Admin Access"),
-        ("roles/run.admin", "Cloud Run Admin Access")
+        ("roles/run.admin", "Cloud Run Admin Access"),
+        ("roles/iam.serviceAccountAdmin", "Service Account Admin Access")
     ]
 
     for role_id, role_name in roles_to_grant:
