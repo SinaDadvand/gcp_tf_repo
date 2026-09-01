@@ -169,10 +169,16 @@ def main():
         else:
             console.print(f"[warning]! Project creation returned warning/error: {stderr.strip()}[/warning]")
 
+# --- Link Billing ---
     if billing_id:
-        success, _, stderr = run_command(f"gcloud billing projects link {project_id} --billing-account={billing_id}")
+        console.print(f"\n[bold cyan]Linking Billing Account '{billing_id}'...[/bold cyan]")
+        success, stdout, stderr = run_command(f"gcloud billing projects link {project_id} --billing-account={billing_id}")
         if success:
             console.print(f"[success]✓ Linked Billing Account ({billing_id}) to '{project_id}'[/success]")
+        else:
+            console.print(f"[danger]✘ Failed to link Billing Account ({billing_id}): {stderr.strip()}[/danger]")
+            console.print("[danger]Aborting bootstrap: APIs cannot be enabled without linked billing.[/danger]")
+            sys.exit(1)
 
     # Enable Core APIs required for bootstrap
     console.print("\n[bold cyan]Enabling Core APIs...[/bold cyan]")
