@@ -7,17 +7,10 @@ on:
       - 'feature/**'
     paths:
       - 'terraform_gcp/**'
-  pull_request:
-    branches:
-      - main
-      - 'feature/**'
-    paths:
-      - 'terraform_gcp/**'
 
 permissions:
   id-token: write
   contents: read
-  pull-requests: write
 
 jobs:
   # -------------------------------------------------------------
@@ -80,16 +73,7 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        run: terraform plan -no-color -out=tfplan
-
-      - name: Post Plan to PR Comment
-        if: github.event_name == 'pull_request'
-        uses: borchero/terraform-plan-comment@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          planfile: tfplan
-          working-directory: ${{ matrix.project_dir }}
-          header: "📝 Terraform Plan Output (`${{ matrix.project_dir }}`)"
+        run: terraform plan -no-color
 
   # -------------------------------------------------------------
   # JOB 3: TERRAFORM APPLY (Runs across dynamically discovered matrix)
