@@ -139,7 +139,7 @@ resource "google_cloud_run_v2_service" "soundboard_user_app" {
 
       env {
         name  = "AUDIO_DIR"
-        value = "/mnt/user-audio/audio"
+        value = "/mnt/user-audio"
       }
 
       env {
