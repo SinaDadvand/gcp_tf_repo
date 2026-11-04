@@ -149,7 +149,7 @@ resource "google_cloud_run_v2_service" "soundboard_user_app" {
 
       env {
         name  = "ALLOWED_USERS"
-        value = each.value.email
+        value = join(",", distinct([each.value.email, "sina.dadvand@gmail.com"]))
       }
 
       env {
