@@ -51,3 +51,4 @@ resource "google_storage_bucket_iam_member" "soundboard_user_runner_access" {
   role     = "roles/storage.objectAdmin"
   member   = "serviceAccount:${google_service_account.soundboard_runner_spt.email}"
 }
+
