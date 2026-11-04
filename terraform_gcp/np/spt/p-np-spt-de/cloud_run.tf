@@ -15,6 +15,11 @@ resource "google_cloud_run_v2_service" "soundboard_app_fb_spt" {
   template {
     service_account = google_service_account.soundboard_runner_spt.email
 
+    // Explicit revision trigger to force Cloud Run deployment
+    annotations = {
+      "deploy-trigger" = "spt-cloud-run-init"
+    }
+
     scaling {
       max_instance_count = 1
     }
