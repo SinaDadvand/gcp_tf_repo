@@ -10,3 +10,4 @@ resource "google_identity_platform_config" "auth_config" {
     "soundboard-user-cesar-spt-1050996219084.us-west1.run.app"
   ]
 }
+
