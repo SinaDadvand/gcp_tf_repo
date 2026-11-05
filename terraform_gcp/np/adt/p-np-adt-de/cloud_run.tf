@@ -52,6 +52,11 @@ resource "google_cloud_run_v2_service" "soundboard_app_fb_adt" {
         value = "${var.project_id}.firebaseapp.com" # Evaluates to p-np-adt-de.firebaseapp.com
       }
 
+      env {
+        name  = "FIREBASE_PROJECT_ID"
+        value = var.project_id
+      }
+
       // Configure explicit email allowlist
       env {
         name  = "ALLOWED_USERS"
@@ -185,6 +190,11 @@ resource "google_cloud_run_v2_service" "soundboard_user_app" {
       env {
         name  = "FIREBASE_AUTH_DOMAIN"
         value = "${var.project_id}.firebaseapp.com"
+      }
+
+      env {
+        name  = "FIREBASE_PROJECT_ID"
+        value = var.project_id
       }
 
       resources {
