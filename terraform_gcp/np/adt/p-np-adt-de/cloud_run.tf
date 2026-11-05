@@ -55,7 +55,7 @@ resource "google_cloud_run_v2_service" "soundboard_app_fb_adt" {
       // Configure explicit email allowlist
       env {
         name  = "ALLOWED_USERS"
-        value = "sina.dadvand@gmail.com,friend@gmail.com"
+        value = "sina.dadvand@gmail.com,crcastillo85@gmail.com"
       }
 
       resources {

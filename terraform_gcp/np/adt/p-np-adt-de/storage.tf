@@ -42,6 +42,15 @@ resource "google_storage_bucket_iam_member" "soundboard_user_bucket_access" {
   member   = "user:${each.value.email}"
 }
 
+// [SOUNDBOARD APP] Admin GUI Access
+// Grants Sina full object administration on all soundboard user buckets
+resource "google_storage_bucket_iam_member" "soundboard_admin_bucket_access" {
+  for_each = { for k, v in var.soundboard_users : k => v if v.email != "sina.dadvand@gmail.com" }
+  bucket   = google_storage_bucket.soundboard_user_audio[each.key].name
+  role     = "roles/storage.objectAdmin"
+  member   = "user:sina.dadvand@gmail.com"
+}
+
 // [SOUNDBOARD APP] Cloud Run Runtime FUSE Mount Access
 // Grants the shared Cloud Run runner Service Account objectAdmin on each bucket
 // to allow the Cloud Storage FUSE volume mount to read/write audio and config files.
